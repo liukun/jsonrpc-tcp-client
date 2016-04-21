@@ -1,0 +1,30 @@
+{
+  "name": "jsonrpc-tcp-client",
+  "version": "1.0.0",
+  "description": "Client side JSON-RPC implement.",
+  "main": "index.js",
+  "scripts": {
+    "test": "./node_modules/.bin/tape 'test/**/*.js'"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/liukun/jsonrpc-tcp-client.git"
+  },
+  "keywords": [
+    "jsonrpc"
+  ],
+  "author": "Kun Liu",
+  "license": "MIT",
+  "dependencies": {
+    "CBuffer": "^1.1.1",
+    "json-stream": "^1"
+  },
+  "devDependencies": {
+    "tape": "^4.5.1"
+  },
+  "typings": "index.d.ts",
+  "bugs": {
+    "url": "https://github.com/liukun/jsonrpc-tcp-client/issues"
+  },
+  "homepage": "https://github.com/liukun/jsonrpc-tcp-client#readme"
+}

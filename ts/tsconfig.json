@@ -1,0 +1,24 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es5",
+    "newLine": "LF",
+    "outDir": "../",
+    "declaration": true,
+    "noImplicitAny": true,
+    "removeComments": false,
+    "sourceMap": true
+  },
+  "exclude": [
+    "typings/browser.d.ts",
+    "typings/browser"
+  ],
+  "atom": {
+    "formatOnSave": true
+  },
+  "formatCodeOptions": {
+    "indentSize": 2,
+    "tabSize": 2,
+    "newLineCharacter": "\n"
+  }
+}
