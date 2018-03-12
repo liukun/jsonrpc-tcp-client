@@ -1,3 +1,4 @@
+"use strict";
 /*
  * http://www.jsonrpc.org/specification
  *
@@ -5,12 +6,17 @@
  *  Batch is not implemented.
  *  Server is not fully implemented.
  */
-"use strict";
-var __extends = (this && this.__extends) || function (d, b) {
-    for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p];
-    function __() { this.constructor = d; }
-    d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
-};
+var __extends = (this && this.__extends) || (function () {
+    var extendStatics = Object.setPrototypeOf ||
+        ({ __proto__: [] } instanceof Array && function (d, b) { d.__proto__ = b; }) ||
+        function (d, b) { for (var p in b) if (b.hasOwnProperty(p)) d[p] = b[p]; };
+    return function (d, b) {
+        extendStatics(d, b);
+        function __() { this.constructor = d; }
+        d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
+    };
+})();
+Object.defineProperty(exports, "__esModule", { value: true });
 var events = require("events");
 var net = require("net");
 var json_stream_1 = require("json-stream");
@@ -22,7 +28,8 @@ var defaultOptions = {
     socketEncoder: function (obj) {
         return new Buffer(JSON.stringify(obj) + "\n");
     },
-    retryDelay: 100
+    retry: true,
+    retryDelay: 100,
 };
 function mergeOptions(options) {
     var res = {};
@@ -40,21 +47,20 @@ function mergeOptions(options) {
     }
     return res;
 }
-var ReconnectSocket = (function (_super) {
+var ReconnectSocket = /** @class */ (function (_super) {
     __extends(ReconnectSocket, _super);
     function ReconnectSocket(cache, port, options) {
-        var _this = this;
-        _super.call(this);
-        this.cache = cache;
-        this.port = port;
-        this.close = function () {
+        var _this = _super.call(this) || this;
+        _this.cache = cache;
+        _this.port = port;
+        _this.close = function () {
             _this.closed = true;
             if (_this.socket) {
                 _this.socket.end();
                 _this.socket.unref();
             }
         };
-        this.connect = function () {
+        _this.connect = function () {
             if (_this.socket || _this.closed) {
                 return;
             }
@@ -70,8 +76,11 @@ var ReconnectSocket = (function (_super) {
                 delete _this.sendingObj;
                 socket.destroy();
                 delete _this.socket;
-                if (!_this.closed) {
+                if (!_this.closed && _this.options.retry) {
                     setTimeout(_this.connect, _this.options.retryDelay);
+                }
+                else {
+                    _this.emit("error", "connect failed");
                 }
             };
             socket.on("error", onError);
@@ -82,21 +91,22 @@ var ReconnectSocket = (function (_super) {
                 _this.emit("data", data);
             });
         };
-        this.onSocketConnect = function () {
+        _this.onSocketConnect = function () {
             delete _this.sendingIndex;
             delete _this.sendingObj;
             _this.socketConnected = true;
             _this.emit("connect");
             _this.send();
         };
-        this.onSocketDrain = function () {
+        _this.onSocketDrain = function () {
             delete _this.paused;
             _this.send();
         };
-        this.options = mergeOptions(options);
-        if (this.options.connectImmediately) {
-            this.connect();
+        _this.options = mergeOptions(options);
+        if (_this.options.connectImmediately) {
+            _this.connect();
         }
+        return _this;
     }
     ReconnectSocket.prototype.send = function () {
         if (this.cache.size <= 0) {
@@ -161,7 +171,7 @@ var ReconnectSocket = (function (_super) {
     return ReconnectSocket;
 }(events.EventEmitter));
 exports.ReconnectSocket = ReconnectSocket;
-var Client = (function () {
+var Client = /** @class */ (function () {
     function Client(port, options) {
         var _this = this;
         this.port = port;
@@ -197,6 +207,15 @@ var Client = (function () {
         this.socket.on("sent", function (sendingObj) {
             if (sendingObj.obj.id == null) {
                 sendingObj.done = true;
+            }
+        });
+        this.socket.on("error", function (error) {
+            var obj = { error: { code: -32300, message: error } };
+            while (_this.cache.size > 0) {
+                var sendingObj = _this.cache.shift();
+                if (sendingObj.cb) {
+                    sendingObj.cb(obj.error);
+                }
             }
         });
     }
@@ -260,7 +279,7 @@ var Client = (function () {
     return Client;
 }());
 exports.Client = Client;
-var Server = (function () {
+var Server = /** @class */ (function () {
     function Server(port, options) {
         var _this = this;
         this.port = port;
@@ -349,6 +368,5 @@ var Server = (function () {
     return Server;
 }());
 exports.Server = Server;
-Object.defineProperty(exports, "__esModule", { value: true });
 exports.default = Client;
 //# sourceMappingURL=index.js.map

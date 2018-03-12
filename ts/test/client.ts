@@ -3,7 +3,15 @@ import * as test from "tape"
 import {Client, Server} from "../"
 const port = 55667
 
-test("simple server client", (t) => {
+test("no server", {},  (t) => {
+  let client = new Client(port, {retry: false})
+  client.request("hello", null, (error, result) => {
+    t.deepEqual(error, { code: -32300, message: 'connect failed' })
+    t.end()
+  })
+})
+
+test("simple server client", {},  (t) => {
   let server = new Server(port)
   server.start()
   let client = new Client(port)
@@ -67,7 +75,7 @@ test("reconnect", { timeout: 10000 }, (t) => {
   t.end()
 })
 
-test("limit", (t) => {
+test("limit", {}, (t) => {
   let server = new Server(port)
   server.register("echo", (params, resp) => {
     resp(null, params)

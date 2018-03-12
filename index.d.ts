@@ -1,3 +1,4 @@
+/// <reference types="node" />
 import * as events from "events";
 export interface Options {
     host?: string;
@@ -5,6 +6,7 @@ export interface Options {
     connectTimeout?: number;
     maxBuffered?: number;
     connectImmediately?: boolean;
+    retry?: boolean;
     retryDelay?: number;
     socketEncoder?: Function;
 }

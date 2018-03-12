@@ -1,8 +1,16 @@
 "use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
 var test = require("tape");
 var _1 = require("../");
 var port = 55667;
-test("simple server client", function (t) {
+test("no server", {}, function (t) {
+    var client = new _1.Client(port, { retry: false });
+    client.request("hello", null, function (error, result) {
+        t.deepEqual(error, { code: -32300, message: 'connect failed' });
+        t.end();
+    });
+});
+test("simple server client", {}, function (t) {
     var server = new _1.Server(port);
     server.start();
     var client = new _1.Client(port);
@@ -64,7 +72,7 @@ test("reconnect", { timeout: 10000 }, function (t) {
     });
     t.end();
 });
-test("limit", function (t) {
+test("limit", {}, function (t) {
     var server = new _1.Server(port);
     server.register("echo", function (params, resp) {
         resp(null, params);

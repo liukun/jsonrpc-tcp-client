@@ -19,6 +19,7 @@ export interface Options {
   connectTimeout?: number
   maxBuffered?: number
   connectImmediately?: boolean
+  retry?: boolean
   retryDelay?: number
   socketEncoder?: Function
 }
@@ -30,20 +31,21 @@ const defaultOptions: Options = {
   socketEncoder: (obj: any) => {
     return new Buffer(JSON.stringify(obj) + "\n")
   },
-  retryDelay: 100
+  retry: true,
+  retryDelay: 100,
 }
 
 function mergeOptions(options?: Options) {
-  let res: Options = {}
+  let res: any = {}
   for (let key in defaultOptions) {
     if (defaultOptions.hasOwnProperty(key)) {
-      res[key] = defaultOptions[key]
+      res[key] = (defaultOptions as any)[key]
     }
   }
   if (options != null) {
     for (let key in options) {
       if (options.hasOwnProperty(key)) {
-        res[key] = options[key]
+        res[key] = (options as any)[key]
       }
     }
   }
@@ -97,8 +99,10 @@ export class ReconnectSocket extends events.EventEmitter { // socket that reconn
       delete this.sendingObj
       socket.destroy()
       delete this.socket
-      if (!this.closed) {
+      if (!this.closed && this.options.retry) {
         setTimeout(this.connect, this.options.retryDelay)
+      } else {
+        this.emit("error", "connect failed")
       }
     }
     socket.on("error", onError)
@@ -209,6 +213,15 @@ export class Client {
     this.socket.on("sent", (sendingObj: SendingObj) => {
       if (sendingObj.obj.id == null) { // not resend Notification
         sendingObj.done = true
+      }
+    })
+    this.socket.on("error", (error?: string) => {
+      let obj = {error: {code: -32300, message: error}}
+      while (this.cache.size > 0) {
+        let sendingObj: SendingObj = this.cache.shift()
+        if (sendingObj.cb) {
+          sendingObj.cb(obj.error)
+        }
       }
     })
   }
