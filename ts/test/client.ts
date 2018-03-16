@@ -12,7 +12,7 @@ test("no server", {},  (t) => {
 })
 
 test("simple server client", {},  (t) => {
-  let server = new Server(port)
+  let server = new Server(port, {host: '127.0.0.1'})
   server.start()
   let client = new Client(port)
   t.test("unknown method", (t1) => {

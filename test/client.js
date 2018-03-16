@@ -11,7 +11,7 @@ test("no server", {}, function (t) {
     });
 });
 test("simple server client", {}, function (t) {
-    var server = new _1.Server(port);
+    var server = new _1.Server(port, { host: '127.0.0.1' });
     server.start();
     var client = new _1.Client(port);
     t.test("unknown method", function (t1) {

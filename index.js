@@ -353,8 +353,7 @@ var Server = /** @class */ (function () {
         socket.write(JSON.stringify(obj) + "\n");
     };
     Server.prototype.start = function () {
-        this.server.listen(this.port, function () {
-        });
+        this.server.listen(this.port, this.options.host);
     };
     Server.prototype.close = function (cb) {
         this.server.close(cb);

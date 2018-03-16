@@ -367,8 +367,7 @@ export class Server { // for testing purpose
     socket.write(JSON.stringify(obj) + "\n")
   }
   start() {
-    this.server.listen(this.port, () => {
-    })
+    this.server.listen(this.port, this.options.host)
   }
   close(cb?: Function) {
     this.server.close(cb)
