@@ -90,6 +90,9 @@ var ReconnectSocket = /** @class */ (function (_super) {
             socket.on("data", function (data) {
                 _this.emit("data", data);
             });
+            if (_this.options.connectTimeout) {
+                socket.setTimeout(_this.options.connectTimeout, onError);
+            }
         };
         _this.onSocketConnect = function () {
             delete _this.sendingIndex;

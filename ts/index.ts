@@ -112,6 +112,9 @@ export class ReconnectSocket extends events.EventEmitter { // socket that reconn
     socket.on("data", (data: any) => {
       this.emit("data", data)
     })
+    if (this.options.connectTimeout) {
+      socket.setTimeout(this.options.connectTimeout, onError)
+    }
   }
   private onSocketConnect = () => {
     delete this.sendingIndex
