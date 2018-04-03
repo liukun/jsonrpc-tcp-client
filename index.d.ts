@@ -36,7 +36,9 @@ export declare class Client {
     private cache;
     constructor(port: number, options?: Options);
     private id;
-    request(method: string, params?: Object, cb?: Response): void;
+    request(method: string, params?: Object, cb?: Response, opts?: {
+        fields: any;
+    }): void;
     private response(obj);
     private whenOverflow;
     close(): void;

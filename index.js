@@ -16,6 +16,14 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var __assign = (this && this.__assign) || Object.assign || function(t) {
+    for (var s, i = 1, n = arguments.length; i < n; i++) {
+        s = arguments[i];
+        for (var p in s) if (Object.prototype.hasOwnProperty.call(s, p))
+            t[p] = s[p];
+    }
+    return t;
+};
 Object.defineProperty(exports, "__esModule", { value: true });
 var events = require("events");
 var net = require("net");
@@ -137,10 +145,12 @@ var ReconnectSocket = /** @class */ (function (_super) {
                         --index;
                     }
                     if (index >= 0) {
+                        // found
                         this.sendingIndex = index;
                         this.emit("sent", this.sendingObj);
                     }
                     else {
+                        // the sendingObj may overflow and be removed
                         delete this.sendingIndex;
                         delete this.sendingObj;
                     }
@@ -197,7 +207,7 @@ var Client = /** @class */ (function () {
                 _this.jsonStream.removeAllListeners();
                 delete _this.jsonStream;
             }
-            _this.jsonStream = new json_stream_1.JSONStream;
+            _this.jsonStream = new json_stream_1.JSONStream();
             _this.jsonStream.on("data", function (obj) {
                 _this.response(obj);
             });
@@ -209,6 +219,7 @@ var Client = /** @class */ (function () {
         });
         this.socket.on("sent", function (sendingObj) {
             if (sendingObj.obj.id == null) {
+                // not resend Notification
                 sendingObj.done = true;
             }
         });
@@ -222,10 +233,17 @@ var Client = /** @class */ (function () {
             }
         });
     }
-    Client.prototype.request = function (method, params, cb) {
-        var req = { method: method };
+    Client.prototype.request = function (method, params, cb, opts) {
+        var req;
+        if (opts && opts.fields) {
+            req = __assign({}, opts.fields, { method: method });
+        }
+        else {
+            req = { method: method };
+        }
         var id;
         if (cb) {
+            // if no cb, will send Notification without id
             // if has cb, will send Request with id
             id = this.id++;
             req.id = id;
@@ -240,7 +258,7 @@ var Client = /** @class */ (function () {
             this.cache.push({
                 id: id,
                 obj: req,
-                cb: cb
+                cb: cb,
             });
         }
         else {
@@ -292,14 +310,17 @@ var Server = /** @class */ (function () {
         this.server = net.createServer(function (socket) {
             _this.sockets.push(socket);
             var closed;
-            var jsonStream = new json_stream_1.JSONStream;
+            var jsonStream = new json_stream_1.JSONStream();
             jsonStream.on("data", function (req) {
                 if (req == null || closed) {
                     return;
                 }
                 var method = _this.methods[req.method];
                 if (method == null && req.id != null) {
-                    _this.send(socket, { id: req.id, error: { code: -32601, message: "Method not found" } });
+                    _this.send(socket, {
+                        id: req.id,
+                        error: { code: -32601, message: "Method not found" },
+                    });
                     return;
                 }
                 var resp = function (error, result) {
@@ -329,7 +350,11 @@ var Server = /** @class */ (function () {
                     method(req.params, resp);
                 }
                 catch (exc) {
-                    resp({ data: { exc: { code: exc.code, msg: exc.message, stack: exc.stack } } });
+                    resp({
+                        data: {
+                            exc: { code: exc.code, msg: exc.message, stack: exc.stack },
+                        },
+                    });
                 }
             });
             socket.pipe(jsonStream);

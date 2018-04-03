@@ -9,7 +9,7 @@
 import * as events from "events"
 import * as net from "net"
 
-import {JSONStream} from "json-stream"
+import { JSONStream } from "json-stream"
 
 let CBuffer: any = require("CBuffer")
 
@@ -62,7 +62,8 @@ interface SendingObj {
   done?: boolean
 }
 
-export class ReconnectSocket extends events.EventEmitter { // socket that reconnect and re-send
+export class ReconnectSocket extends events.EventEmitter {
+  // socket that reconnect and re-send
   private options: Options
   private socket: net.Socket
   private sendingIndex: number
@@ -152,10 +153,12 @@ export class ReconnectSocket extends events.EventEmitter { // socket that reconn
             }
             --index
           }
-          if (index >= 0) { // found
+          if (index >= 0) {
+            // found
             this.sendingIndex = index
             this.emit("sent", this.sendingObj)
-          } else { // the sendingObj may overflow and be removed
+          } else {
+            // the sendingObj may overflow and be removed
             delete this.sendingIndex
             delete this.sendingObj
           }
@@ -199,11 +202,11 @@ export class Client {
     this.socket = new ReconnectSocket(this.cache, port, this.options)
     this.socket.on("connect", () => {
       if (this.jsonStream) {
-        this.jsonStream.end();
-        this.jsonStream.removeAllListeners();
-        delete this.jsonStream;
+        this.jsonStream.end()
+        this.jsonStream.removeAllListeners()
+        delete this.jsonStream
       }
-      this.jsonStream = new JSONStream
+      this.jsonStream = new JSONStream()
       this.jsonStream.on("data", (obj: any) => {
         this.response(obj)
       })
@@ -214,12 +217,13 @@ export class Client {
       }
     })
     this.socket.on("sent", (sendingObj: SendingObj) => {
-      if (sendingObj.obj.id == null) { // not resend Notification
+      if (sendingObj.obj.id == null) {
+        // not resend Notification
         sendingObj.done = true
       }
     })
     this.socket.on("error", (error?: string) => {
-      let obj = {error: {code: -32300, message: error}}
+      let obj = { error: { code: -32300, message: error } }
       while (this.cache.size > 0) {
         let sendingObj: SendingObj = this.cache.shift()
         if (sendingObj.cb) {
@@ -229,10 +233,23 @@ export class Client {
     })
   }
   private id = 1
-  request(method: string, params?: Object, cb?: Response) {
-    let req: any = { method }
+  request(
+    method: string,
+    params?: Object,
+    cb?: Response,
+    opts?: {
+      fields: any
+    }
+  ) {
+    let req: any
+    if (opts && opts.fields) {
+      req = { ...opts.fields, method }
+    } else {
+      req = { method }
+    }
     let id: number
-    if (cb) { // if no cb, will send Notification without id
+    if (cb) {
+      // if no cb, will send Notification without id
       // if has cb, will send Request with id
       id = this.id++
       req.id = id
@@ -247,7 +264,7 @@ export class Client {
       this.cache.push({
         id,
         obj: req,
-        cb
+        cb,
       })
     } else {
       this.cache.push({ obj: req })
@@ -294,26 +311,27 @@ export class Client {
   }
 }
 
-export class Server { // for testing purpose
+export class Server {
+  // for testing purpose
   private options: Options
   private server: net.Server
   private sockets: net.Socket[] = []
   constructor(private port: number, options?: Options) {
     this.options = mergeOptions(options)
-    this.server = net.createServer((socket) => {
+    this.server = net.createServer(socket => {
       this.sockets.push(socket)
       let closed: boolean
-      let jsonStream = new JSONStream
+      let jsonStream = new JSONStream()
       jsonStream.on("data", (req: any) => {
         if (req == null || closed) {
           return
         }
         let method = this.methods[req.method]
         if (method == null && req.id != null) {
-          this.send(
-            socket,
-            { id: req.id, error: { code: -32601, message: "Method not found" } }
-          )
+          this.send(socket, {
+            id: req.id,
+            error: { code: -32601, message: "Method not found" },
+          })
           return
         }
         let resp = (error: any, result?: any) => {
@@ -342,7 +360,11 @@ export class Server { // for testing purpose
         try {
           method(req.params, resp)
         } catch (exc) {
-          resp({ data: { exc: { code: exc.code, msg: exc.message, stack: exc.stack } } })
+          resp({
+            data: {
+              exc: { code: exc.code, msg: exc.message, stack: exc.stack },
+            },
+          })
         }
       })
       socket.pipe(jsonStream)
