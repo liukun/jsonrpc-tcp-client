@@ -6,28 +6,38 @@ var port = 55667;
 test("no server", {}, function (t) {
     var client = new _1.Client(port, { retry: false });
     client.request("hello", null, function (error, result) {
-        t.deepEqual(error, { code: -32300, message: 'connect failed' });
+        t.deepEqual(error, { code: -32300, message: "connect failed" });
         t.end();
     });
 });
 test("simple server client", {}, function (t) {
-    var server = new _1.Server(port, { host: '127.0.0.1' });
+    var server = new _1.Server(port, { host: "127.0.0.1" });
     server.start();
     var client = new _1.Client(port);
     t.test("unknown method", function (t1) {
         client.request("hello", null, function (error, result) {
-            t1.deepEqual(error, { code: -32601, message: 'Method not found' });
+            t1.deepEqual(error, { code: -32601, message: "Method not found" });
             t1.end();
         });
     });
     t.test("plus", function (t1) {
-        server.register("plus", function (params, resp) {
+        server.register("plus", function (params, resp, send) {
+            send({ method: "hello" });
             resp(null, params[0] + params[1]);
         });
+        var count = 0;
+        var end = function () {
+            ++count;
+            if (count >= 2)
+                t1.end();
+        };
         client.request("plus", [1, 2, 3], function (error, result) {
             t1.notOk(error, "no error");
             t1.equal(result, 3);
-            t1.end();
+            end();
+        });
+        client.once("notification", function (obj) {
+            end();
         });
     });
     t.test("plus", function (t1) {

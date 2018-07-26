@@ -28,7 +28,7 @@ export declare class ReconnectSocket extends events.EventEmitter {
     private onSocketDrain;
     send(): void;
 }
-export declare class Client {
+export declare class Client extends events.EventEmitter {
     private port;
     private options;
     private socket;
@@ -50,7 +50,7 @@ export declare class Server {
     private sockets;
     constructor(port: number, options?: Options);
     private methods;
-    register(method: string, cb: (params: any, resp: Response) => void): void;
+    register(method: string, cb: (params: any, resp: Response, send: (obj: any) => void) => void): void;
     private send(socket, obj);
     start(): void;
     close(cb?: Function): void;

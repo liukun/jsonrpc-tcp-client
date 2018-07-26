@@ -184,12 +184,13 @@ var ReconnectSocket = /** @class */ (function (_super) {
     return ReconnectSocket;
 }(events.EventEmitter));
 exports.ReconnectSocket = ReconnectSocket;
-var Client = /** @class */ (function () {
+var Client = /** @class */ (function (_super) {
+    __extends(Client, _super);
     function Client(port, options) {
-        var _this = this;
-        this.port = port;
-        this.id = 1;
-        this.whenOverflow = function (sendingObj) {
+        var _this = _super.call(this) || this;
+        _this.port = port;
+        _this.id = 1;
+        _this.whenOverflow = function (sendingObj) {
             if (sendingObj.done) {
                 return;
             }
@@ -197,11 +198,11 @@ var Client = /** @class */ (function () {
                 sendingObj.cb({ code: -32000, message: "Overflow" });
             }
         };
-        this.options = mergeOptions(options);
-        this.cache = new CBuffer(this.options.maxBuffered);
-        this.cache.overflow = this.whenOverflow;
-        this.socket = new ReconnectSocket(this.cache, port, this.options);
-        this.socket.on("connect", function () {
+        _this.options = mergeOptions(options);
+        _this.cache = new CBuffer(_this.options.maxBuffered);
+        _this.cache.overflow = _this.whenOverflow;
+        _this.socket = new ReconnectSocket(_this.cache, port, _this.options);
+        _this.socket.on("connect", function () {
             if (_this.jsonStream) {
                 _this.jsonStream.end();
                 _this.jsonStream.removeAllListeners();
@@ -212,18 +213,18 @@ var Client = /** @class */ (function () {
                 _this.response(obj);
             });
         });
-        this.socket.on("data", function (data) {
+        _this.socket.on("data", function (data) {
             if (_this.jsonStream) {
                 _this.jsonStream.write(data);
             }
         });
-        this.socket.on("sent", function (sendingObj) {
+        _this.socket.on("sent", function (sendingObj) {
             if (sendingObj.obj.id == null) {
                 // not resend Notification
                 sendingObj.done = true;
             }
         });
-        this.socket.on("error", function (error) {
+        _this.socket.on("error", function (error) {
             var obj = { error: { code: -32300, message: error } };
             while (_this.cache.size > 0) {
                 var sendingObj = _this.cache.shift();
@@ -232,6 +233,7 @@ var Client = /** @class */ (function () {
                 }
             }
         });
+        return _this;
     }
     Client.prototype.request = function (method, params, cb, opts) {
         var req;
@@ -267,15 +269,17 @@ var Client = /** @class */ (function () {
         this.socket.send();
     };
     Client.prototype.response = function (obj) {
-        if (obj == null || obj.id == null) {
+        if (obj == null) {
             return;
         }
         var id = obj.id;
+        var isNotification = true;
         // callback
         var index = 0;
         while (index < this.cache.size) {
             var sendingObj = this.cache.get(index);
             if (sendingObj.id === id) {
+                isNotification = false;
                 if (sendingObj.cb) {
                     sendingObj.cb(obj.error, obj.result);
                 }
@@ -283,6 +287,9 @@ var Client = /** @class */ (function () {
                 break;
             }
             ++index;
+        }
+        if (isNotification) {
+            this.emit("notification", obj);
         }
         // purge done ones
         while (this.cache.size > 0) {
@@ -298,7 +305,7 @@ var Client = /** @class */ (function () {
         this.socket.close();
     };
     return Client;
-}());
+}(events.EventEmitter));
 exports.Client = Client;
 var Server = /** @class */ (function () {
     function Server(port, options) {
@@ -346,8 +353,9 @@ var Server = /** @class */ (function () {
                     _this.send(socket, { id: req.id, result: result });
                     return;
                 };
+                var send = function (obj) { return _this.send(socket, obj); };
                 try {
-                    method(req.params, resp);
+                    method(req.params, resp, send);
                 }
                 catch (exc) {
                     resp({

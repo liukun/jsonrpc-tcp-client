@@ -190,12 +190,13 @@ export class ReconnectSocket extends events.EventEmitter {
   }
 }
 
-export class Client {
+export class Client extends events.EventEmitter {
   private options: Options
   private socket: ReconnectSocket
   private jsonStream: JSONStream
   private cache: any
   constructor(private port: number, options?: Options) {
+    super()
     this.options = mergeOptions(options)
     this.cache = new CBuffer(this.options.maxBuffered)
     this.cache.overflow = this.whenOverflow
@@ -272,15 +273,17 @@ export class Client {
     this.socket.send()
   }
   private response(obj: any) {
-    if (obj == null || obj.id == null) {
+    if (obj == null) {
       return
     }
     let id = obj.id
+    let isNotification = true
     // callback
     let index = 0
     while (index < this.cache.size) {
       let sendingObj: SendingObj = this.cache.get(index)
       if (sendingObj.id === id) {
+        isNotification = false
         if (sendingObj.cb) {
           sendingObj.cb(obj.error, obj.result)
         }
@@ -288,6 +291,9 @@ export class Client {
         break
       }
       ++index
+    }
+    if (isNotification) {
+      this.emit("notification", obj)
     }
     // purge done ones
     while (this.cache.size > 0) {
@@ -357,8 +363,9 @@ export class Server {
           this.send(socket, { id: req.id, result })
           return
         }
+        let send = (obj: any) => this.send(socket, obj)
         try {
-          method(req.params, resp)
+          method(req.params, resp, send)
         } catch (exc) {
           resp({
             data: {
@@ -385,7 +392,10 @@ export class Server {
     })
   }
   private methods: { [index: string]: Function } = {}
-  register(method: string, cb: (params: any, resp: Response) => void) {
+  register(
+    method: string,
+    cb: (params: any, resp: Response, send: (obj: any) => void) => void
+  ) {
     this.methods[method] = cb
   }
   private send(socket: net.Socket, obj: any) {

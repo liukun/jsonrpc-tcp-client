@@ -1,50 +1,59 @@
 import * as test from "tape"
 
-import {Client, Server} from "../"
+import { Client, Server } from "../"
 const port = 55667
 
-test("no server", {},  (t) => {
-  let client = new Client(port, {retry: false})
+test("no server", {}, t => {
+  let client = new Client(port, { retry: false })
   client.request("hello", null, (error, result) => {
-    t.deepEqual(error, { code: -32300, message: 'connect failed' })
+    t.deepEqual(error, { code: -32300, message: "connect failed" })
     t.end()
   })
 })
 
-test("simple server client", {},  (t) => {
-  let server = new Server(port, {host: '127.0.0.1'})
+test("simple server client", {}, t => {
+  let server = new Server(port, { host: "127.0.0.1" })
   server.start()
   let client = new Client(port)
-  t.test("unknown method", (t1) => {
+  t.test("unknown method", t1 => {
     client.request("hello", null, (error, result) => {
-      t1.deepEqual(error, { code: -32601, message: 'Method not found' })
+      t1.deepEqual(error, { code: -32601, message: "Method not found" })
       t1.end()
     })
   })
-  t.test("plus", (t1) => {
-    server.register("plus", (params, resp) => {
+  t.test("plus", t1 => {
+    server.register("plus", (params, resp, send) => {
+      send({ method: "hello" })
       resp(null, params[0] + params[1])
     })
+    let count = 0
+    let end = () => {
+      ++count
+      if (count >= 2) t1.end()
+    }
     client.request("plus", [1, 2, 3], (error, result) => {
       t1.notOk(error, "no error")
       t1.equal(result, 3)
-      t1.end()
+      end()
+    })
+    client.once("notification", (obj: any) => {
+      end()
     })
   })
-  t.test("plus", (t1) => {
+  t.test("plus", t1 => {
     client.request("plus", null, (error, result) => {
       t1.equal(error.code, -32603)
       t1.end()
     })
   })
-  t.test("close", (t1) => {
+  t.test("close", t1 => {
     client.close()
     server.close(t1.end)
   })
   t.end()
 })
 
-test("reconnect", { timeout: 10000 }, (t) => {
+test("reconnect", { timeout: 10000 }, t => {
   let server = new Server(port)
   server.register("echo", (params, resp) => {
     resp(null, params)
@@ -53,14 +62,14 @@ test("reconnect", { timeout: 10000 }, (t) => {
     server.start()
   }, 500)
   let client = new Client(port, { connectImmediately: true })
-  t.test("not connect immediately", (t1) => {
+  t.test("not connect immediately", t1 => {
     client.request("echo", 1, (error, result) => {
       t1.equal(result, 1)
       server.close(t1.end)
     })
   })
-  t.test("start server again", (t1) => {
-    client.request("echo", 10, () => { })
+  t.test("start server again", t1 => {
+    client.request("echo", 10, () => {})
     client.request("echo", 11)
     server.start()
     client.request("echo", 12, (error, result) => {
@@ -68,14 +77,14 @@ test("reconnect", { timeout: 10000 }, (t) => {
       t1.end()
     })
   })
-  t.test("close", (t1) => {
+  t.test("close", t1 => {
     client.close()
     server.close(t1.end)
   })
   t.end()
 })
 
-test("limit", {}, (t) => {
+test("limit", {}, t => {
   let server = new Server(port)
   server.register("echo", (params, resp) => {
     resp(null, params)
