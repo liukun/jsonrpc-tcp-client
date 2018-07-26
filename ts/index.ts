@@ -8,8 +8,9 @@
 
 import * as events from "events"
 import * as net from "net"
+import { Transform } from "stream"
 
-import { JSONStream } from "json-stream"
+import Parser = require("jsonparse")
 
 let CBuffer: any = require("CBuffer")
 
@@ -50,6 +51,27 @@ function mergeOptions(options?: Options) {
     }
   }
   return res
+}
+
+class JSONStream extends Transform {
+  private parser: Parser
+  constructor() {
+    super({ objectMode: true })
+    this.parser = new Parser()
+    const self = this
+    this.parser.onValue = function(value) {
+      if (this.stack.length === 0) {
+        self.push(value)
+      }
+    }
+    this.parser.onError = function(err) {
+      self.emit("error", err)
+    }
+  }
+  _transform(chunk: any, encoding: string, callback: Function): void {
+    this.parser.write(chunk)
+    callback()
+  }
 }
 
 export type Response = (error: any, result?: any) => void

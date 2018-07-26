@@ -27,7 +27,8 @@ var __assign = (this && this.__assign) || Object.assign || function(t) {
 Object.defineProperty(exports, "__esModule", { value: true });
 var events = require("events");
 var net = require("net");
-var json_stream_1 = require("json-stream");
+var stream_1 = require("stream");
+var Parser = require("jsonparse");
 var CBuffer = require("CBuffer");
 var defaultOptions = {
     connectTimeout: 10e3,
@@ -55,6 +56,28 @@ function mergeOptions(options) {
     }
     return res;
 }
+var JSONStream = /** @class */ (function (_super) {
+    __extends(JSONStream, _super);
+    function JSONStream() {
+        var _this = _super.call(this, { objectMode: true }) || this;
+        _this.parser = new Parser();
+        var self = _this;
+        _this.parser.onValue = function (value) {
+            if (this.stack.length === 0) {
+                self.push(value);
+            }
+        };
+        _this.parser.onError = function (err) {
+            self.emit("error", err);
+        };
+        return _this;
+    }
+    JSONStream.prototype._transform = function (chunk, encoding, callback) {
+        this.parser.write(chunk);
+        callback();
+    };
+    return JSONStream;
+}(stream_1.Transform));
 var ReconnectSocket = /** @class */ (function (_super) {
     __extends(ReconnectSocket, _super);
     function ReconnectSocket(cache, port, options) {
@@ -208,7 +231,7 @@ var Client = /** @class */ (function (_super) {
                 _this.jsonStream.removeAllListeners();
                 delete _this.jsonStream;
             }
-            _this.jsonStream = new json_stream_1.JSONStream();
+            _this.jsonStream = new JSONStream();
             _this.jsonStream.on("data", function (obj) {
                 _this.response(obj);
             });
@@ -317,7 +340,7 @@ var Server = /** @class */ (function () {
         this.server = net.createServer(function (socket) {
             _this.sockets.push(socket);
             var closed;
-            var jsonStream = new json_stream_1.JSONStream();
+            var jsonStream = new JSONStream();
             jsonStream.on("data", function (req) {
                 if (req == null || closed) {
                     return;
